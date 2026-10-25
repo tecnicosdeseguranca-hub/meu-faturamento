@@ -5,13 +5,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#111827">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
 <title>Meu Faturamento</title>
 <style>
 :root{color-scheme:dark;--bg:#0b1120;--panel:#151e30;--line:#29364c;--text:#f1f5f9;--muted:#9aabc2;--green:#34d399;--blue:#60a5fa}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:15px Arial,sans-serif}
 header{padding:22px 16px;background:#111827;border-bottom:1px solid var(--line)}
-header h1{margin:0;font-size:24px}header p{color:var(--muted);margin:7px 0 0}
+header h1{margin:0;font-size:24px}
+header p{color:var(--muted);margin:7px 0 0}
 main{max-width:850px;margin:auto;padding:15px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:16px;margin-bottom:14px}
 h2{font-size:17px;margin:0 0 14px}
@@ -22,11 +25,11 @@ h2{font-size:17px;margin:0 0 14px}
 .green{color:var(--green)}.blue{color:var(--blue)}
 .progress{height:9px;background:#29364c;border-radius:9px;overflow:hidden;margin-top:14px}
 .progress div{height:100%;background:var(--green);width:0}
-button,input,select{font:inherit;border-radius:9px}
+button,input{font:inherit;border-radius:9px}
 button{padding:11px 13px;border:0;background:#2563eb;color:white;cursor:pointer}
 button.secondary{background:#29364c}
 button.danger{background:#7f2937}
-input,select{background:#0b1120;border:1px solid #3a4961;color:var(--text);padding:11px;width:100%;min-width:0}
+input{background:#0b1120;border:1px solid #3a4961;color:var(--text);padding:11px;width:100%;min-width:0}
 label{display:block;color:var(--muted);font-size:13px;margin-bottom:6px}
 .field{margin-bottom:12px}
 .row{display:flex;gap:9px;align-items:center}
@@ -46,7 +49,7 @@ label{display:block;color:var(--muted);font-size:13px;margin-bottom:6px}
 .entry small{color:var(--muted);display:block;margin-top:4px}
 .entry button{padding:7px 9px;font-size:12px}
 .note{font-size:12px;color:var(--muted);line-height:1.5}
-.hidden{display:none}
+.hidden{display:none!important}
 @media(min-width:600px){.stats{grid-template-columns:repeat(4,1fr)}.day{min-height:76px}.day small{font-size:11px}}
 </style>
 </head>
@@ -111,10 +114,7 @@ label{display:block;color:var(--muted);font-size:13px;margin-bottom:6px}
 <section class="card">
 <h2>💾 Backup dos seus dados</h2>
 <p class="note">Exporte seus lançamentos e metas para guardar uma cópia. Importe o arquivo para recuperar os dados neste aparelho.</p>
-<div class="row">
-<button id="export">Exportar backup</button>
-<button id="importBtn" class="secondary">Importar backup</button>
-</div>
+<div class="row"><button id="export">Exportar backup</button><button id="importBtn" class="secondary">Importar backup</button></div>
 <input type="file" id="importFile" accept=".json,application/json" class="hidden">
 </section>
 <p class="note">Os dados ficam guardados neste navegador. Exporte um backup regularmente para evitar perder informações ao limpar os dados do navegador.</p>
@@ -128,34 +128,40 @@ const keyDate=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 const parseDate=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d,12)};
 const monthNames=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const defaults=[150,310,0,310,310,310,200];
-let data={entries:[],targets:defaults,monthlyGoals:{},monthlyOverrides:{}};
+let data={entries:[],targets:defaults.slice(),monthlyGoals:{}};
 let selected='2026-11-01',view=new Date(2026,10,1),editId=null;
-try{const old=JSON.parse(localStorage.getItem('meuFaturamentoV1')||'null');if(old&&Array.isArray(old.entries)){data={...data,...old};}}catch(e){}
+try{
+const old=JSON.parse(localStorage.getItem('meuFaturamentoV1')||'null');
+if(old&&Array.isArray(old.entries))data={...data,...old};
+}catch(e){}
 if(!Array.isArray(data.targets)||data.targets.length!==7)data.targets=defaults.slice();
 if(!data.monthlyGoals)data.monthlyGoals={};
-if(!data.monthlyOverrides)data.monthlyOverrides={};
-function save(){localStorage.setItem('meuFaturamentoV1',JSON.stringify(data));}
-function sumMonth(m){return data.entries.filter(e=>e.date.startsWith(m)).reduce((s,e)=>s+Number(e.amount),0);}
-function sumDay(d){return data.entries.filter(e=>e.date===d).reduce((s,e)=>s+Number(e.amount),0);}
-function dayTarget(d){return Number(data.targets[parseDate(d).getDay()]||0);}
-function autoMonthGoal(m){const [y,mo]=m.split('-').map(Number);let sum=0;const days=new Date(y,mo,0).getDate();for(let d=1;d<=days;d++)sum+=dayTarget(y+'-'+pad(mo)+'-'+pad(d));return sum;}
-function monthGoal(m){return data.monthlyGoals[m]!==undefined?Number(data.monthlyGoals[m]):autoMonthGoal(m);}
+function save(){localStorage.setItem('meuFaturamentoV1',JSON.stringify(data))}
+function sumMonth(m){return data.entries.filter(e=>e.date.startsWith(m)).reduce((s,e)=>s+Number(e.amount),0)}
+function sumDay(d){return data.entries.filter(e=>e.date===d).reduce((s,e)=>s+Number(e.amount),0)}
+function dayTarget(d){return Number(data.targets[parseDate(d).getDay()]||0)}
+function autoMonthGoal(m){
+const [y,mo]=m.split('-').map(Number);let sum=0;
+for(let d=1;d<=new Date(y,mo,0).getDate();d++)sum+=dayTarget(y+'-'+pad(mo)+'-'+pad(d));
+return sum;
+}
+function monthGoal(m){return data.monthlyGoals[m]!==undefined?Number(data.monthlyGoals[m]):autoMonthGoal(m)}
 function refresh(){
 const m=view.getFullYear()+'-'+pad(view.getMonth()+1);
 $('monthTitle').textContent=monthNames[view.getMonth()]+' '+view.getFullYear();
 const earned=sumMonth(m),goal=monthGoal(m),remaining=Math.max(0,goal-earned),pct=goal>0?earned/goal*100:(earned>0?100:0);
 $('earned').textContent=money(earned);$('goal').textContent=money(goal);$('remaining').textContent=money(remaining);
-$('bar').style.width=Math.min(100,pct)+'%';$('percent').textContent=pct.toLocaleString('pt-BR',{maximumFractionDigits:1})+'% da meta mensal atingida';
+$('bar').style.width=Math.min(100,pct)+'%';
+$('percent').textContent=pct.toLocaleString('pt-BR',{maximumFractionDigits:1})+'% da meta mensal atingida';
 $('dayGoal').textContent=money(dayTarget(selected));
 renderCalendar();renderEntries();
 $('monthlyGoal').value=goal.toFixed(2);
 }
 function renderCalendar(){
 const el=$('calendar');el.innerHTML='';
-['D','S','T','Q','Q','S','S'].forEach(n=>{const e=document.createElement('div');e.className='weekday';e.textContent=n;el.append(e);});
-const y=view.getFullYear(),m=view.getMonth(),first=new Date(y,m,1).getDay(),count=new Date(y,m+1,0).getDate();
-for(let i=0;i<first;i++){const e=document.createElement('div');e.className='day empty';el.append(e);}
-const today=keyDate(new Date());
+['D','S','T','Q','Q','S','S'].forEach(n=>{const e=document.createElement('div');e.className='weekday';e.textContent=n;el.append(e)});
+const y=view.getFullYear(),m=view.getMonth(),first=new Date(y,m,1).getDay(),count=new Date(y,m+1,0).getDate(),today=keyDate(new Date());
+for(let i=0;i<first;i++){const e=document.createElement('div');e.className='day empty';el.append(e)}
 for(let d=1;d<=count;d++){
 const ds=y+'-'+pad(m+1)+'-'+pad(d),earned=sumDay(ds),target=dayTarget(ds);
 const e=document.createElement('div');e.className='day';
@@ -165,8 +171,9 @@ if(target>0&&earned>=target)e.classList.add('done');
 if(earned>0&&earned<target)e.classList.add('over');
 const b=document.createElement('b');b.textContent=d;e.append(b);
 const a=document.createElement('small');a.textContent=earned?money(earned):money(target);e.append(a);
-e.onclick=()=>{selected=ds;$('date').value=ds;resetForm();refresh();};el.append(e);
-}}
+e.onclick=()=>{selected=ds;$('date').value=ds;resetForm();refresh()};el.append(e);
+}
+}
 function renderEntries(){
 const list=$('entries');list.innerHTML='';
 const arr=data.entries.filter(e=>e.date===selected);
@@ -174,35 +181,37 @@ $('entriesTitle').textContent='Lançamentos de '+parseDate(selected).toLocaleDat
 $('noEntries').classList.toggle('hidden',arr.length>0);
 arr.forEach(e=>{
 const row=document.createElement('div');row.className='entry';
-const left=document.createElement('div');const val=document.createElement('strong');val.textContent=money(e.amount);left.append(val);
+const left=document.createElement('div'),val=document.createElement('strong');val.textContent=money(e.amount);left.append(val);
 const desc=document.createElement('small');desc.textContent=e.description||'Sem descrição';left.append(desc);
 const actions=document.createElement('div');actions.className='row';
-const edit=document.createElement('button');edit.className='secondary';edit.textContent='Editar';edit.onclick=()=>{editId=e.id;$('amount').value=e.amount;$('description').value=e.description||'';$('date').value=e.date;$('entryTitle').textContent='✏️ Editar lançamento';$('save').textContent='Salvar alteração';$('cancelEdit').classList.remove('hidden');window.scrollTo({top:0,behavior:'smooth'});};
-const del=document.createElement('button');del.className='danger';del.textContent='Excluir';del.onclick=()=>{if(confirm('Excluir este lançamento?')){data.entries=data.entries.filter(x=>x.id!==e.id);save();refresh();}};
+const edit=document.createElement('button');edit.className='secondary';edit.textContent='Editar';
+edit.onclick=()=>{editId=e.id;$('amount').value=e.amount;$('description').value=e.description||'';$('date').value=e.date;$('entryTitle').textContent='✏️ Editar lançamento';$('save').textContent='Salvar alteração';$('cancelEdit').classList.remove('hidden');$('amount').scrollIntoView({behavior:'smooth',block:'center'})};
+const del=document.createElement('button');del.className='danger';del.textContent='Excluir';
+del.onclick=()=>{if(confirm('Excluir este lançamento?')){data.entries=data.entries.filter(x=>x.id!==e.id);save();refresh()}};
 actions.append(edit,del);row.append(left,actions);list.append(row);
 });
 }
-function resetForm(){editId=null;$('amount').value='';$('description').value='';$('date').value=selected;$('entryTitle').textContent='➕ Lançar faturamento';$('save').textContent='Salvar lançamento';$('cancelEdit').classList.add('hidden');}
+function resetForm(){editId=null;$('amount').value='';$('description').value='';$('date').value=selected;$('entryTitle').textContent='➕ Lançar faturamento';$('save').textContent='Salvar lançamento';$('cancelEdit').classList.add('hidden')}
 $('save').onclick=()=>{
 const date=$('date').value,amount=Number($('amount').value),description=$('description').value.trim();
-if(!date){alert('Escolha uma data.');return;}
-if(date<'2026-11-01'){alert('O controle começa em 1º de novembro de 2026.');return;}
-if(!Number.isFinite(amount)||amount<=0){alert('Digite um valor maior que zero.');return;}
-if(editId){const e=data.entries.find(x=>x.id===editId);if(e)Object.assign(e,{date,amount,description});}
+if(!date){alert('Escolha uma data.');return}
+if(date<'2026-11-01'){alert('O controle começa em 1º de novembro de 2026.');return}
+if(!Number.isFinite(amount)||amount<=0){alert('Digite um valor maior que zero.');return}
+if(editId){const e=data.entries.find(x=>x.id===editId);if(e)Object.assign(e,{date,amount,description})}
 else data.entries.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),date,amount,description});
 selected=date;view=parseDate(date);save();resetForm();refresh();
 };
 $('cancelEdit').onclick=resetForm;
-$('prev').onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()-1,1);if(view<new Date(2026,10,1))view=new Date(2026,10,1);selected=keyDate(view);resetForm();refresh();};
-$('next').onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()+1,1);selected=keyDate(view);resetForm();refresh();};
+$('prev').onclick=()=>{const d=new Date(view.getFullYear(),view.getMonth()-1,1);if(d<new Date(2026,10,1))return;view=d;selected=keyDate(view);resetForm();refresh()};
+$('next').onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()+1,1);selected=keyDate(view);resetForm();refresh()};
 $('saveGoals').onclick=()=>{
-const targets=[];for(let i=0;i<7;i++){const v=Number($('t'+i).value);if(!Number.isFinite(v)||v<0){alert('Confira as metas: use valores iguais ou maiores que zero.');return;}targets.push(v);}
-data.targets=targets;
+const targets=[];
+for(let i=0;i<7;i++){const v=Number($('t'+i).value);if(!Number.isFinite(v)||v<0){alert('Confira as metas. Use valores iguais ou maiores que zero.');return}targets.push(v)}
 const m=view.getFullYear()+'-'+pad(view.getMonth()+1),v=Number($('monthlyGoal').value);
-if(!Number.isFinite(v)||v<0){alert('Confira a meta mensal.');return;}
-data.monthlyGoals[m]=v;save();refresh();alert('Metas salvas!');
+if(!Number.isFinite(v)||v<0){alert('Confira a meta mensal.');return}
+data.targets=targets;data.monthlyGoals[m]=v;save();refresh();alert('Metas salvas!');
 };
-$('autoGoal').onclick=()=>{const m=view.getFullYear()+'-'+pad(view.getMonth()+1);delete data.monthlyGoals[m];$('monthlyGoal').value=autoMonthGoal(m).toFixed(2);};
+$('autoGoal').onclick=()=>{const m=view.getFullYear()+'-'+pad(view.getMonth()+1);delete data.monthlyGoals[m];save();refresh()};
 $('export').onclick=()=>{
 const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
 const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='backup-meu-faturamento.json';a.click();URL.revokeObjectURL(url);
@@ -210,15 +219,20 @@ const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.d
 $('importBtn').onclick=()=>$('importFile').click();
 $('importFile').onchange=async ev=>{
 const f=ev.target.files[0];if(!f)return;
-try{const obj=JSON.parse(await f.text());if(!obj||!Array.isArray(obj.entries)||!Array.isArray(obj.targets)||obj.targets.length!==7)throw Error();
-if(confirm('Importar este backup? Os dados atuais serão substituídos.')){data={...data,...obj};save();refresh();alert('Backup importado.');}
-}catch(e){alert('Arquivo inválido ou incompatível.');}ev.target.value='';
+try{
+const obj=JSON.parse(await f.text());
+if(!obj||!Array.isArray(obj.entries)||!Array.isArray(obj.targets)||obj.targets.length!==7)throw Error();
+if(confirm('Importar este backup? Os dados atuais serão substituídos.')){data={...data,...obj};save();refresh();alert('Backup importado.')}
+}catch(e){alert('Arquivo inválido ou incompatível.')}
+ev.target.value='';
 };
 for(let i=0;i<7;i++)$('t'+i).value=data.targets[i];
 $('date').value=selected;
 refresh();
+if('serviceWorker' in navigator){
+window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(err=>console.error('Falha ao ativar modo offline:',err)));
+}
 })();
 </script>
 </body>
-  </html>
-  
+</html>
